@@ -113,6 +113,29 @@
       <button class="btn btn-primary" id="run-btn" onclick="startBriefing()" style="display:none;">Run briefing →</button>
       <button class="btn btn-danger btn-sm" onclick="clearAll()" style="margin-left:auto;">Clear all accounts</button>
     </div>
+
+    <!-- Export / Import -->
+    <div style="margin-top:1.5rem;">
+      <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.75rem;">Sync to another device</div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px;">Export accounts</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Generates an encrypted code. Paste it on your other device to import all accounts instantly.</div>
+        <button class="btn btn-primary btn-sm" onclick="exportAccounts()">Generate export code</button>
+        <div id="export-output" style="display:none;margin-top:10px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Copy this code and paste it on your other device:</div>
+          <textarea id="export-code" readonly style="width:100%;height:80px;font-size:11px;font-family:'Courier New',monospace;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--blue-text);padding:8px;resize:none;"></textarea>
+          <button class="btn btn-sm" style="margin-top:6px;" onclick="copyExportCode()">Copy to clipboard</button>
+          <span id="copy-confirm" style="font-size:11px;color:var(--green-text);margin-left:8px;display:none;">✓ Copied</span>
+        </div>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px;">Import accounts</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Paste an export code from another device to load all accounts here.</div>
+        <textarea id="import-code" placeholder="Paste export code here..." style="width:100%;height:80px;font-size:11px;font-family:'Courier New',monospace;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);padding:8px;resize:none;"></textarea>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="importAccounts()">Import accounts</button>
+        <div id="import-result" style="font-size:11px;margin-top:6px;display:none;"></div>
+      </div>
+    </div>
   </div>
 
   <div id="pane-guide" class="pane">
@@ -331,6 +354,43 @@ async function tryAISummary(emails,events,files){
       area.innerHTML=h;
     }else{area.innerHTML='';}
   }catch(e){clearTimeout(tid);const a=document.getElementById('ai-area');if(a)a.innerHTML='';}
+}
+
+// Export / Import
+const ENC_KEY='DBA-SYNC-2026';
+function xorEncode(str,key){let out='';for(let i=0;i<str.length;i++)out+=String.fromCharCode(str.charCodeAt(i)^key.charCodeAt(i%key.length));return out;}
+function exportAccounts(){
+  if(!accounts.length){alert('No accounts to export.');return;}
+  const clean=accounts.map(a=>({label:a.label,email:a.email,clientId:a.clientId,clientSecret:a.clientSecret,refreshToken:a.refreshToken}));
+  const json=JSON.stringify(clean);
+  const encoded=xorEncode(json,ENC_KEY);
+  const b64=btoa(unescape(encodeURIComponent(encoded)));
+  document.getElementById('export-output').style.display='block';
+  document.getElementById('export-code').value='DBA1:'+b64;
+}
+function copyExportCode(){
+  const ta=document.getElementById('export-code');ta.select();
+  navigator.clipboard.writeText(ta.value).catch(()=>document.execCommand('copy'));
+  const c=document.getElementById('copy-confirm');c.style.display='inline';setTimeout(()=>c.style.display='none',2000);
+}
+function importAccounts(){
+  const code=document.getElementById('import-code').value.trim();
+  const result=document.getElementById('import-result');
+  if(!code.startsWith('DBA1:')){result.style.display='block';result.style.color='var(--red-text)';result.textContent='✗ Invalid code.';return;}
+  try{
+    const b64=code.slice(5);
+    const encoded=decodeURIComponent(escape(atob(b64)));
+    const json=xorEncode(encoded,ENC_KEY);
+    const imported=JSON.parse(json);
+    if(!Array.isArray(imported)||!imported.length)throw new Error('Empty');
+    let added=0;
+    imported.forEach(a=>{if(!accounts.find(x=>x.email===a.email)){accounts.push({...a,accessToken:null,tokenExpiry:0});added++;}});
+    saveAccounts();renderAccounts();
+    document.getElementById('import-code').value='';
+    result.style.display='block';result.style.color='var(--green-text)';
+    result.textContent=`✓ Imported ${added} account${added!==1?'s':''} successfully.`;
+    setTimeout(()=>result.style.display='none',3000);
+  }catch(e){result.style.display='block';result.style.color='var(--red-text)';result.textContent='✗ Could not read code. Try exporting again.';}
 }
 
 loadAccounts();
