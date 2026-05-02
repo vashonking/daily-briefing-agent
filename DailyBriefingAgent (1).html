@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Briefing Agent</title>
+<style>
+  :root{--bg:#1a1a1a;--bg2:#242424;--bg3:#2e2e2e;--border:#3a3a3a;--border2:#444;--text:#e8e8e8;--text2:#aaa;--text3:#555;--green-bg:#0d2e22;--green-text:#4dd4a0;--blue:#378ADD;--blue-bg:#0d1e35;--blue-text:#7ab8f0;--amber-bg:#2e1e08;--amber-text:#FAC775;--red-bg:#2e0d0d;--red-text:#f08080;--radius:10px;--radius-sm:6px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
+  .app{max-width:900px;margin:0 auto;padding:2rem 1.5rem;}
+  .app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;}
+  .app-title{font-size:20px;font-weight:600;}
+  .app-date{font-size:13px;color:var(--text2);margin-top:2px;}
+  .tab-bar{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
+  .tab{font-size:13px;padding:8px 16px;cursor:pointer;border:none;background:transparent;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:var(--radius-sm) var(--radius-sm) 0 0;}
+  .tab:hover{color:var(--text);}.tab.active{color:var(--text);font-weight:500;border-bottom-color:var(--text);}
+  .pane{display:none;}.pane.active{display:block;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:10px;}
+  .card-dashed{border-style:dashed;}
+  .account-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+  .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;}
+  .pill{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;}
+  .pill-ok{background:var(--green-bg);color:var(--green-text);}.pill-warn{background:var(--amber-bg);color:var(--amber-text);}
+  label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;margin-top:10px;}
+  input{width:100%;font-size:13px;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);outline:none;}
+  input:focus{border-color:var(--blue);}
+  .btn{font-size:13px;padding:8px 16px;cursor:pointer;border-radius:var(--radius-sm);border:1px solid var(--border2);background:transparent;color:var(--text);}
+  .btn:hover{background:var(--bg3);}.btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-primary{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:500;}
+  .btn-primary:hover{opacity:0.88;background:var(--text);}
+  .btn-danger{color:var(--red-text);border-color:transparent;}.btn-danger:hover{background:var(--red-bg);}
+  .btn-sm{font-size:12px;padding:5px 12px;}
+  .btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .section-label{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin:1.5rem 0 0.6rem;display:flex;align-items:center;gap:8px;}
+  .count-badge{font-size:11px;padding:1px 7px;border-radius:20px;background:var(--bg3);color:var(--text2);font-weight:400;text-transform:none;letter-spacing:0;}
+  .step-row{display:flex;gap:14px;margin-bottom:14px;}
+  .step-num{width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;color:var(--text2);margin-top:1px;}
+  .step-title{font-size:14px;font-weight:500;margin-bottom:4px;}
+  .step-desc{font-size:13px;color:var(--text2);line-height:1.6;}
+  .code{font-family:'Courier New',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin:8px 0;word-break:break-all;line-height:1.6;color:var(--blue-text);}
+  .info-box{padding:12px 14px;border-radius:var(--radius-sm);font-size:13px;line-height:1.6;margin:12px 0;}
+  .info-amber{background:var(--amber-bg);border:1px solid #4a3010;color:var(--amber-text);}
+  .info-red{background:var(--red-bg);border:1px solid #4a1010;color:var(--red-text);}
+  .info-blue{background:var(--blue-bg);border:1px solid #1a3555;color:var(--blue-text);}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.2rem;}
+  .metric{background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;}
+  .metric-val{font-size:22px;font-weight:500;}.metric-lbl{font-size:11px;color:var(--text2);margin-top:2px;}
+  .summary-box{background:var(--bg3);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:1rem;font-size:14px;line-height:1.7;}
+  .priority-box{padding:12px 14px;border-radius:var(--radius-sm);border:1px solid #4a3010;background:var(--amber-bg);margin-bottom:1rem;}
+  .priority-label{font-size:11px;font-weight:500;color:var(--amber-text);margin-bottom:4px;}
+  .priority-text{font-size:13px;color:#e8c078;}
+  .item-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+  .dot-gmail{background:#D85A30;}.dot-cal{background:#378ADD;}.dot-drive{background:#639922;}
+  .item-title{font-size:13px;font-weight:500;margin-bottom:3px;}
+  .item-meta{font-size:12px;color:var(--text2);line-height:1.5;}
+  .acct-tag{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);white-space:nowrap;margin-left:auto;flex-shrink:0;}
+  .progress-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;}
+  .chip{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text2);background:var(--bg3);}
+  .chip.done{background:var(--green-bg);color:var(--green-text);border-color:#1a4a35;}
+  .chip.active{background:var(--blue-bg);color:var(--blue-text);border-color:#1a3555;}
+  .chip.error{background:var(--red-bg);color:var(--red-text);border-color:#4a1010;}
+  .status-bar{font-size:13px;color:var(--text2);display:none;align-items:center;gap:8px;margin-bottom:1rem;}
+  .spinner{width:12px;height:12px;border:2px solid var(--border2);border-top-color:var(--text2);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .divider{border:none;border-top:1px solid var(--border);margin:1.2rem 0;}
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:14px;line-height:1.7;}
+  .sources{display:flex;gap:12px;align-items:center;}
+  .source-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);}
+  a{color:var(--blue-text);}
+  .ai-loading{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--blue-text);padding:12px 14px;background:var(--blue-bg);border:1px solid #1a3555;border-radius:var(--radius-sm);margin-bottom:1rem;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div>
+      <div class="app-title">Daily Briefing Agent</div>
+      <div class="app-date" id="today-date"></div>
+    </div>
+    <div class="sources">
+      <div class="source-item"><div class="dot dot-gmail"></div>Gmail</div>
+      <div class="source-item"><div class="dot dot-cal"></div>Calendar</div>
+      <div class="source-item"><div class="dot dot-drive"></div>Drive</div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab('accounts')">Accounts</button>
+    <button class="tab" onclick="showTab('guide')">Setup guide</button>
+    <button class="tab" onclick="showTab('briefing')">Briefing</button>
+  </div>
+
+  <div id="pane-accounts" class="pane active">
+    <p class="section-label">Connected accounts</p>
+    <div id="accounts-list"></div>
+    <div class="card card-dashed" style="margin-top:12px;">
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px;">Add Google account</div>
+      <div style="font-size:12px;color:var(--text2);">Client ID and Secret are shared across all accounts. Refresh token is unique per account.</div>
+      <label>Account label</label><input type="text" id="acct-label" placeholder='e.g. "Personal", "Crowned Head", "Family"'>
+      <label>Gmail address</label><input type="email" id="acct-email" placeholder="you@gmail.com">
+      <label>Client ID</label><input type="text" id="acct-cid" placeholder="123456789-xxx.apps.googleusercontent.com">
+      <label>Client Secret</label><input type="password" id="acct-csecret" placeholder="GOCSPX-...">
+      <label>Refresh Token</label><input type="password" id="acct-rtoken" placeholder="1//04...">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="addAccount()">Add account</button>
+        <button class="btn" onclick="showTab('guide')">Setup guide ↗</button>
+      </div>
+      <div id="saved-notice" style="font-size:11px;color:var(--green-text);margin-top:8px;display:none;">✓ Saved to browser storage</div>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" id="run-btn" onclick="startBriefing()" style="display:none;">Run briefing →</button>
+      <button class="btn btn-danger btn-sm" onclick="clearAll()" style="margin-left:auto;">Clear all accounts</button>
+    </div>
+  </div>
+
+  <div id="pane-guide" class="pane">
+    <p class="section-label">One-time Google Cloud setup</p>
+    <div class="step-row"><div class="step-num">1</div><div><div class="step-title">Create a Google Cloud project</div><div class="step-desc">Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → New Project → name it "Daily Briefing Agent".</div></div></div>
+    <div class="step-row"><div class="step-num">2</div><div><div class="step-title">Enable Gmail, Calendar, and Drive APIs</div><div class="step-desc">APIs & Services → Library → search and enable each one.</div></div></div>
+    <div class="step-row"><div class="step-num">3</div><div><div class="step-title">Create OAuth credentials — Web application type</div><div class="step-desc">Credentials → Create Credentials → OAuth Client ID → Web application. Add redirect URI:</div><div class="code">https://developers.google.com/oauthplayground</div></div></div>
+    <div class="step-row"><div class="step-num">4</div><div><div class="step-title">Add test users</div><div class="step-desc">Google Auth Platform → Audience → Test users → add all your Gmail addresses.</div></div></div>
+    <div class="step-row"><div class="step-num">5</div><div><div class="step-title">Get a refresh token per account</div><div class="step-desc">Go to <a href="https://developers.google.com/oauthplayground" target="_blank">developers.google.com/oauthplayground</a> → gear icon → Use your own OAuth credentials → enter Client ID and Secret. Paste scopes:</div><div class="code">https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.readonly</div><div class="step-desc">Authorize → select account → Continue → Exchange authorization code for tokens → copy Refresh token. Repeat for each account.</div></div></div>
+    <div class="info-box info-amber">Credentials are saved in localStorage and stay on your device only — never sent anywhere except Google's APIs directly.</div>
+  </div>
+
+  <div id="pane-briefing" class="pane">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <span style="font-size:11px;color:var(--text3);" id="last-updated"></span>
+      <button class="btn btn-primary btn-sm" id="refresh-btn" onclick="startBriefing()">Refresh ↺</button>
+    </div>
+    <div class="status-bar" id="status-bar"><div class="spinner"></div><span id="status-text"></span></div>
+    <div class="progress-row" id="progress-row" style="display:none;"></div>
+    <div id="briefing-output"><div class="empty-state">Add your accounts on the Accounts tab, then click "Run briefing".</div></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='dba_v3';
+const PALETTES=[{bg:'#0d1e35',color:'#7ab8f0'},{bg:'#0d2e22',color:'#4dd4a0'},{bg:'#2e1e08',color:'#FAC775'},{bg:'#1e0d2e',color:'#b388f5'},{bg:'#2e0d0d',color:'#f08080'},{bg:'#0d2e2e',color:'#4dd4d4'}];
+let accounts=[];
+
+document.getElementById('today-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+function loadAccounts(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)accounts=JSON.parse(s);}catch(e){accounts=[];}renderAccounts();}
+function saveAccounts(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(accounts));}catch(e){}}
+function clearAll(){if(!confirm('Remove all saved accounts?'))return;accounts=[];localStorage.removeItem(STORAGE_KEY);renderAccounts();}
+
+function showTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['accounts','guide','briefing'][i]===id));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+}
+
+function getInitials(s){return s.split(/\s+/).map(w=>w[0]).join('').substring(0,2).toUpperCase();}
+function renderAccounts(){
+  const list=document.getElementById('accounts-list'),btn=document.getElementById('run-btn');
+  if(!accounts.length){list.innerHTML='<div style="font-size:13px;color:var(--text2);padding:0.5rem 0;">No accounts added yet.</div>';btn.style.display='none';return;}
+  btn.style.display='inline-block';
+  list.innerHTML=accounts.map((a,i)=>{
+    const pal=PALETTES[i%PALETTES.length],ok=!!(a.refreshToken&&a.clientId&&a.clientSecret);
+    return `<div class="card"><div class="account-row">
+      <div class="avatar" style="background:${pal.bg};color:${pal.color};">${getInitials(a.label)}</div>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:500;">${a.label}</div><div style="font-size:12px;color:var(--text2);">${a.email}</div></div>
+      <span class="pill ${ok?'pill-ok':'pill-warn'}">${ok?'Ready':'Incomplete'}</span>
+      <button class="btn btn-danger btn-sm" onclick="removeAccount(${i})" style="margin-left:8px;">Remove</button>
+    </div><div style="font-size:11px;color:var(--text3);">Gmail · Calendar · Drive</div></div>`;
+  }).join('');
+}
+function addAccount(){
+  const label=document.getElementById('acct-label').value.trim();
+  const email=document.getElementById('acct-email').value.trim();
+  const clientId=document.getElementById('acct-cid').value.trim();
+  const clientSecret=document.getElementById('acct-csecret').value.trim();
+  const refreshToken=document.getElementById('acct-rtoken').value.trim();
+  if(!label||!email){alert('Label and email are required.');return;}
+  accounts.push({label,email,clientId,clientSecret,refreshToken,accessToken:null,tokenExpiry:0});
+  saveAccounts();
+  ['acct-label','acct-email','acct-cid','acct-csecret','acct-rtoken'].forEach(id=>document.getElementById(id).value='');
+  const n=document.getElementById('saved-notice');n.style.display='block';setTimeout(()=>n.style.display='none',2500);
+  renderAccounts();
+}
+function removeAccount(i){if(!confirm('Remove '+accounts[i].label+'?'))return;accounts.splice(i,1);saveAccounts();renderAccounts();}
+
+async function getAccessToken(acct){
+  if(acct.accessToken&&Date.now()<acct.tokenExpiry-30000)return acct.accessToken;
+  const p=new URLSearchParams({client_id:acct.clientId,client_secret:acct.clientSecret,refresh_token:acct.refreshToken,grant_type:'refresh_token'});
+  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:p});
+  const d=await r.json();
+  if(!d.access_token)throw new Error(d.error_description||d.error||'Token refresh failed');
+  acct.accessToken=d.access_token;acct.tokenExpiry=Date.now()+(d.expires_in*1000);
+  return acct.accessToken;
+}
+
+async function fetchGmail(token){
+  try{
+    const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=8&q=is:unread',{headers:{Authorization:'Bearer '+token}});
+    const d=await r.json();
+    const msgs=(d.messages||[]).slice(0,5);
+    const details=await Promise.all(msgs.map(m=>fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`,{headers:{Authorization:'Bearer '+token}}).then(r=>r.json())));
+    return details.map(d=>{const h=d.payload?.headers||[];const g=n=>h.find(x=>x.name===n)?.value||'';return{from:g('From'),subject:g('Subject'),snippet:(d.snippet||'').substring(0,120)};});
+  }catch(e){return[];}
+}
+async function fetchCalendar(token){
+  try{
+    const now=new Date(),end=new Date();end.setHours(23,59,59,999);
+    const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now.toISOString()}&timeMax=${end.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=8`,{headers:{Authorization:'Bearer '+token}});
+    const d=await r.json();
+    return(d.items||[]).map(e=>({title:e.summary||'Untitled',start:e.start?.dateTime||e.start?.date||'',attendees:(e.attendees||[]).length,location:e.location||''}));
+  }catch(e){return[];}
+}
+async function fetchDrive(token){
+  try{
+    const since=new Date(Date.now()-48*3600*1000).toISOString();
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=modifiedTime>'${since}'&orderBy=modifiedTime desc&pageSize=5&fields=files(name,mimeType,modifiedTime,owners)`,{headers:{Authorization:'Bearer '+token}});
+    const d=await r.json();
+    return(d.files||[]).map(f=>({name:f.name,type:f.mimeType?.split('/').pop()||'file',modified:f.modifiedTime?new Date(f.modifiedTime).toLocaleString():''}));
+  }catch(e){return[];}
+}
+
+function setStatus(msg,show=true){const b=document.getElementById('status-bar');b.style.display=show?'flex':'none';document.getElementById('status-text').textContent=msg;}
+function updateChip(label,state){
+  const row=document.getElementById('progress-row');
+  const id='chip-'+label.replace(/\W/g,'_');
+  let chip=document.getElementById(id);
+  if(!chip){chip=document.createElement('div');chip.id=id;row.appendChild(chip);}
+  chip.className='chip '+(state||'');
+  chip.textContent=(state==='done'?'✓ ':state==='active'?'⋯ ':state==='error'?'✗ ':'')+label;
+}
+
+async function startBriefing(){
+  if(!accounts.length){alert('Add at least one account first.');showTab('accounts');return;}
+  showTab('briefing');
+  document.getElementById('briefing-output').innerHTML='';
+  const row=document.getElementById('progress-row');row.style.display='flex';row.innerHTML='';
+  document.getElementById('refresh-btn').disabled=true;
+  document.getElementById('run-btn').disabled=true;
+  const allEmails=[],allEvents=[],allFiles=[],errors=[];
+
+  for(const acct of accounts){
+    updateChip(acct.label,'active');
+    setStatus('Fetching '+acct.label+'...');
+    try{
+      const token=await getAccessToken(acct);
+      const [emails,events,files]=await Promise.all([fetchGmail(token),fetchCalendar(token),fetchDrive(token)]);
+      emails.forEach(e=>allEmails.push({...e,account:acct.label}));
+      events.forEach(e=>allEvents.push({...e,account:acct.label}));
+      files.forEach(f=>allFiles.push({...f,account:acct.label}));
+      updateChip(acct.label,'done');
+    }catch(err){
+      errors.push(acct.label+': '+err.message);
+      updateChip(acct.label,'error');
+    }
+  }
+
+  setStatus('',false);
+  renderBriefing(allEmails,allEvents,allFiles,errors);
+  document.getElementById('last-updated').textContent='Updated '+new Date().toLocaleTimeString();
+  document.getElementById('refresh-btn').disabled=false;
+  document.getElementById('run-btn').disabled=false;
+
+  // AI summary non-blocking, 45s timeout
+  if(allEmails.length||allEvents.length||allFiles.length){
+    tryAISummary(allEmails,allEvents,allFiles).catch(()=>{
+      const a=document.getElementById('ai-area');if(a)a.innerHTML='';
+    });
+  }
+}
+
+function renderBriefing(emails,events,files,errors){
+  const ac={};accounts.forEach((a,i)=>ac[a.label]=PALETTES[i%PALETTES.length]);
+  let html='';
+  if(errors.length) html+=`<div class="info-box info-red">${errors.map(e=>'⚠ '+e).join('<br>')}</div>`;
+  html+=`<div id="ai-area"><div class="ai-loading"><div class="spinner"></div>Generating AI summary — data loaded below while you wait</div></div>`;
+  html+=`<div class="metrics">
+    <div class="metric"><div class="metric-val">${accounts.length}</div><div class="metric-lbl">Accounts</div></div>
+    <div class="metric"><div class="metric-val">${emails.length}</div><div class="metric-lbl">Unread emails</div></div>
+    <div class="metric"><div class="metric-val">${events.length}</div><div class="metric-lbl">Meetings today</div></div>
+    <div class="metric"><div class="metric-val">${files.length}</div><div class="metric-lbl">Drive updates</div></div>
+  </div>`;
+  if(events.length){
+    html+=`<div class="section-label">Today's meetings <span class="count-badge">${events.length}</span></div>`;
+    events.forEach(e=>{
+      const pal=ac[e.account]||PALETTES[1];
+      const t=e.start?new Date(e.start).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'All day';
+      html+=`<div class="item-card"><div class="dot dot-cal"></div><div style="flex:1;"><div class="item-title">${e.title}</div><div class="item-meta">${t}${e.attendees?' · '+e.attendees+' attendees':''}${e.location?' · '+e.location:''}</div></div><span class="acct-tag" style="background:${pal.bg};color:${pal.color};">${e.account}</span></div>`;
+    });
+  }
+  if(emails.length){
+    html+=`<div class="section-label">Unread emails <span class="count-badge">${emails.length}</span></div>`;
+    emails.forEach(e=>{
+      const pal=ac[e.account]||PALETTES[0];
+      html+=`<div class="item-card"><div class="dot dot-gmail"></div><div style="flex:1;"><div class="item-title">${e.subject||'(No subject)'}</div><div class="item-meta">From: ${e.from||''}${e.snippet?' — '+e.snippet:''}</div></div><span class="acct-tag" style="background:${pal.bg};color:${pal.color};">${e.account}</span></div>`;
+    });
+  }
+  if(files.length){
+    html+=`<div class="section-label">Drive activity (48h) <span class="count-badge">${files.length}</span></div>`;
+    files.forEach(f=>{
+      const pal=ac[f.account]||PALETTES[2];
+      html+=`<div class="item-card"><div class="dot dot-drive"></div><div style="flex:1;"><div class="item-title">${f.name}</div><div class="item-meta">${f.type} · Modified ${f.modified}</div></div><span class="acct-tag" style="background:${pal.bg};color:${pal.color};">${f.account}</span></div>`;
+    });
+  }
+  if(!emails.length&&!events.length&&!files.length&&!errors.length){
+    html+=`<div class="empty-state">No data found across your accounts for today.</div>`;
+  }
+  document.getElementById('briefing-output').innerHTML=html;
+}
+
+async function tryAISummary(emails,events,files){
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),45000);
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,
+        system:`Executive assistant. Today is ${today}. Return ONLY JSON: {"summary":"2 sentence overview","topPriority":"single most important action"}`,
+        messages:[{role:'user',content:`Emails:${JSON.stringify(emails.slice(0,6))}\nMeetings:${JSON.stringify(events.slice(0,6))}\nDrive:${JSON.stringify(files.slice(0,4))}`}]})
+    });
+    clearTimeout(tid);
+    const d=await r.json();
+    const text=d.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'';
+    const parsed=(()=>{try{const m=text.match(/\{[\s\S]*\}/);return m?JSON.parse(m[0]):null;}catch{return null;}})();
+    const area=document.getElementById('ai-area');
+    if(!area)return;
+    if(parsed){
+      let h='';
+      if(parsed.summary)h+=`<div class="summary-box">${parsed.summary}</div>`;
+      if(parsed.topPriority)h+=`<div class="priority-box"><div class="priority-label">Top priority</div><div class="priority-text">${parsed.topPriority}</div></div>`;
+      area.innerHTML=h;
+    }else{area.innerHTML='';}
+  }catch(e){clearTimeout(tid);const a=document.getElementById('ai-area');if(a)a.innerHTML='';}
+}
+
+loadAccounts();
+</script>
+</body>
+</html>
